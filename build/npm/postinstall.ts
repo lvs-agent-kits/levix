@@ -53,14 +53,39 @@ function spawnAsync(command: string, args: string[], opts: child_process.SpawnOp
 }
 
 async function npmInstallAsync(dir: string, opts?: child_process.SpawnOptions): Promise<void> {
+	const targetDir = path.join(root, dir);
+
+	// Skip if directory doesn't exist (can happen after user deletions or git operations)
+	if (!fs.existsSync(targetDir)) {
+		log(dir, 'Directory does not exist, skipping.');
+		return;
+	}
+
+	const command = process.env['npm_command'] || 'install';
+
+	// On Windows, use execSync to avoid spawn issues with cmd.exe in Node.js v24
+	if (process.platform === 'win32') {
+		log(dir, '$ npm.cmd ' + command);
+		const env = { ...process.env, ...(opts?.env ?? {}) };
+		try {
+			child_process.execSync(`npm.cmd ${command}`, {
+				cwd: targetDir,
+				env,
+				stdio: 'inherit',
+			});
+		} catch (e: any) {
+			throw new Error(`npm install failed in ${dir}: ${e.message}`);
+		}
+		removeParcelWatcherPrebuild(dir);
+		return;
+	}
+
 	const finalOpts: child_process.SpawnOptions = {
 		env: { ...process.env },
 		...(opts ?? {}),
-		cwd: path.join(root, dir),
+		cwd: targetDir,
 		shell: true,
 	};
-
-	const command = process.env['npm_command'] || 'install';
 
 	if (process.env['VSCODE_REMOTE_DEPENDENCIES_CONTAINER_NAME'] && /^(.build\/distro\/npm\/)?remote$/.test(dir)) {
 		const syncOpts: child_process.SpawnSyncOptions = {
@@ -308,8 +333,8 @@ async function main() {
 		await task();
 	}
 
-	// JS-only dirs run in parallel
-	const concurrency = Math.min(os.cpus().length, 8);
+	// JS-only dirs run in parallel (except on Windows where spawn has issues)
+	const concurrency = process.platform === 'win32' ? 1 : Math.min(os.cpus().length, 8);
 	log('.', `Running ${parallelTasks.length} npm installs with concurrency ${concurrency}...`);
 	await runWithConcurrency(parallelTasks, concurrency);
 
@@ -323,16 +348,24 @@ async function main() {
 	const claudeDir = path.join(root, '.claude');
 	fs.mkdirSync(claudeDir, { recursive: true });
 
-	const claudeMdLink = path.join(claudeDir, 'CLAUDE.md');
-	const claudeMdLinkType = ensureAgentHarnessLink(path.join('..', '.github', 'copilot-instructions.md'), claudeMdLink);
-	if (claudeMdLinkType !== 'existing') {
-		log('.', `Created ${claudeMdLinkType} .claude/CLAUDE.md -> .github/copilot-instructions.md`);
+	const copilotInstructions = path.join('..', '.github', 'copilot-instructions.md');
+	const copilotInstructionsAbs = path.join(root, '.github', 'copilot-instructions.md');
+	if (fs.existsSync(copilotInstructionsAbs)) {
+		const claudeMdLink = path.join(claudeDir, 'CLAUDE.md');
+		const claudeMdLinkType = ensureAgentHarnessLink(copilotInstructions, claudeMdLink);
+		if (claudeMdLinkType !== 'existing') {
+			log('.', `Created ${claudeMdLinkType} .claude/CLAUDE.md -> .github/copilot-instructions.md`);
+		}
 	}
 
-	const claudeSkillsLink = path.join(claudeDir, 'skills');
-	const claudeSkillsLinkType = ensureAgentHarnessLink(path.join('..', '.agents', 'skills'), claudeSkillsLink);
-	if (claudeSkillsLinkType !== 'existing') {
-		log('.', `Created ${claudeSkillsLinkType} .claude/skills -> .agents/skills`);
+	const agentsSkills = path.join('..', '.agents', 'skills');
+	const agentsSkillsAbs = path.join(root, '.agents', 'skills');
+	if (fs.existsSync(agentsSkillsAbs)) {
+		const claudeSkillsLink = path.join(claudeDir, 'skills');
+		const claudeSkillsLinkType = ensureAgentHarnessLink(agentsSkills, claudeSkillsLink);
+		if (claudeSkillsLinkType !== 'existing') {
+			log('.', `Created ${claudeSkillsLinkType} .claude/skills -> .agents/skills`);
+		}
 	}
 
 	// Temporary: patch @github/copilot-sdk session.js to fix ESM import
