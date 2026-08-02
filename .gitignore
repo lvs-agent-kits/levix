@@ -1,1 +1,50 @@
 **/node_modules/
+
+# Build outputs
+out/
+out-build/
+out-vscode/
+.build/
+remote/.build/
+
+# IDE
+.vscode-test/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Local config
+.qwen/
+.env
+.env.local
+
+# Package manager locks (keep only one)
+# yarn.lock
+# pnpm-lock.yaml
+
+# Electron cache
+.cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Dist
+dist/
