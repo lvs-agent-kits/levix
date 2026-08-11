@@ -36,6 +36,7 @@ function createTemplate(input: string): (params: Record<string, string>) => stri
 	};
 }
 
+/* 为 Darwin 做的适配，should I keep this? */
 const darwinCreditsTemplate = product.darwinCredits && createTemplate(fs.readFileSync(path.join(root, product.darwinCredits), 'utf8'));
 
 /**
