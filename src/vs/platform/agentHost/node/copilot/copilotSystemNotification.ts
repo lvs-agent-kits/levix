@@ -61,7 +61,8 @@ export function buildCopilotSystemNotification(event: SessionEventPayload<'syste
 				startsTurn: false,
 			};
 		default:
-			softAssertNever(kind);
+			// kind from sdk is any
+			softAssertNever(kind as never);
 			return undefined;
 	}
 }
