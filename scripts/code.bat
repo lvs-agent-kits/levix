@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-title VSCode Dev
+title LEVIX Dev
 
 pushd %~dp0\..
 
